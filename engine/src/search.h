@@ -474,6 +474,13 @@ int search(int alpha, int beta, int depth, Position &position,
 
   if (!is_pv && !in_check && !singular_search) {
 
+    // Razoring: If our position looks horrible, only captures may be helpful.
+    if (static_eval + RazMargin * depth < alpha) {
+      int qsScore = qsearch(alpha, beta, position, thread_info, TT);
+      if (qsScore <= alpha)
+        return qsScore;
+    }
+
     // Reverse Futility Pruning (RFP): If our position is way better than beta,
     // we're likely good to stop searching the node.
 
