@@ -901,6 +901,7 @@ void iterative_deepen(
          i++, thread_info.multipv_index++) {
 
       int score, delta = 20;
+      int num_failHigh = 0;
 
       score = search(alpha, beta, depth, position, thread_info, TT);
 
@@ -940,8 +941,18 @@ void iterative_deepen(
                  nps, search_time, internal_to_uci(position, move).c_str());
         }
 
+        if (score <= alpha) {
+          num_failHigh = 0;
+        }
+        else if (score >= beta) {
+          if (score < 2000) {
+            num_failHigh++;
+          }
+        }
+
         alpha -= delta, beta += delta, delta = delta * 3 / 2;
-        score = search(alpha, beta, depth, position, thread_info, TT);
+        score = search(alpha, beta, std::max(1, depth - num_failHigh),
+                       position, thread_info, TT);
       }
 
       if (score == ScoreNone) {
