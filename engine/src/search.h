@@ -576,7 +576,7 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
       }
     }
 
-    if (best_score > -MateScore && depth < SeePruningDepth) {
+    if (best_score > -MateScore && depth < SeePruningDepth && !root) {
 
       int margin =
           is_capture ? SeePruningQuietMargin : (depth * SeePruningNoisyMargin);
