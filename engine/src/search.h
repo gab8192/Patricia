@@ -617,6 +617,8 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
           // that we'll probably beat beta with a full search too.
 
           return sBeta;
+        } else if (tt_score >= beta) {
+          extension = -1;
         }
       }
     }
