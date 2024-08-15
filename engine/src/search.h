@@ -512,7 +512,7 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
     }
   }
 
-  if (is_pv && tt_move == MoveNone && depth > IIRMinDepth) {
+  if ((is_pv || cutNode) && tt_move == MoveNone && depth > IIRMinDepth) {
     // Internal Iterative Reduction: If we are in a PV node and have no TT move,
     // reduce the depth.
     depth--;
@@ -641,8 +641,6 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
         // alpha/beta
         R /= 2;
       }
-
-      R += cutNode;
 
       // Increase reduction if not in pv
       R += !is_pv;
