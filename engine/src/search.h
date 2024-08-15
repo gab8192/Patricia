@@ -557,7 +557,7 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
     searched_move = true;
 
     is_capture = is_cap(position, move);
-    if (!is_capture && !is_pv && best_score > -MateScore) {
+    if (!is_capture && !root && best_score > -MateScore) {
 
       // Late Move Pruning (LMP): If we've searched enough moves, we can skip
       // the rest.
