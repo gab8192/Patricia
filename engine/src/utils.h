@@ -114,8 +114,8 @@ void insert_entry(uint64_t hash, int depth, Move best_move, int32_t score,
     uint8_t age_diff = searches - TT[indx].age;
 
     int new_bonus =
-        depth + bound_type + (age_diff * age_diff * 10 / AgeDiffDiv);
-    int old_bonus = TT[indx].depth + TT[indx].type;
+        depth + 4 + (age_diff * age_diff * 10 / AgeDiffDiv);
+    int old_bonus = TT[indx].depth;
 
     if (old_bonus * OldBonusMult > new_bonus * NewBonusMult) {
       return;
