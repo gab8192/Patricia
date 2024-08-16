@@ -266,19 +266,18 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
 
   if (!in_check) { // If we're not in check and static eval beats beta, we can
                    // immediately return
-    static_eval = eval(position, thread_info);
+    best_score = static_eval = eval(position, thread_info);
 
     if (entry_type == EntryTypes::Exact ||
         (entry_type == EntryTypes::UBound && tt_score < static_eval) ||
         (entry_type == EntryTypes::LBound && tt_score > static_eval)) {
 
-      static_eval = tt_score;
+      best_score = tt_score;
     }
 
-    if (static_eval >= beta) {
-      return static_eval;
+    if (best_score >= beta) {
+      return best_score;
     }
-    best_score = static_eval;
   }
   MoveInfo moves;
   int num_moves =
@@ -329,7 +328,7 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
                : raised_alpha     ? EntryTypes::Exact
                                   : EntryTypes::UBound;
 
-  insert_entry(hash, 0, best_move,
+  insert_entry(hash, 0, best_move, static_eval,
                best_score > MateScore    ? best_score + ply
                : best_score < -MateScore ? best_score - ply
                                          : best_score,
@@ -815,7 +814,8 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
 
   // Add the search results to the TT, accounting for mate scores
   if (!singular_search) {
-    insert_entry(hash, depth, best_move,
+    insert_entry(hash, depth, best_move, 
+                 thread_info.game_hist[thread_info.game_ply].static_eval,
                  best_score > MateScore    ? best_score + ply
                  : best_score < -MateScore ? best_score - ply
                                            : best_score,
