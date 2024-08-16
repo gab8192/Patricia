@@ -90,7 +90,7 @@ int eval(const Position &position, ThreadInfo &thread_info) {
   int m_eval = material_eval(position);
   int m_threshold = std::max({300, abs(eval) * 2 / 3, abs(eval) - 700});
 
-  int bonus1 = 0, bonus2 = 0;
+  int bonus1 = 0;
 
   // Give a small bonus if the position is much better than what material would
   // suggest
@@ -125,14 +125,6 @@ int eval(const Position &position, ThreadInfo &thread_info) {
       s = s_m + thread_info.game_hist[idx + 4].m_diff;
     }
   }
-  if (s) {
-
-    if (thread_info.search_ply % 2) {
-      bonus2 = -20 * (eval < -500 ? 3 : eval < -150 ? 2 : 1);
-    } else {
-      bonus2 = 20 * (eval > 500 ? 3 : eval > 150 ? 2 : 1);
-    }
-  }
 
   // If we're winning, scale eval by material; we don't want to trade off to an
   // easily won endgame, but instead should continue the attack.
@@ -144,7 +136,7 @@ int eval(const Position &position, ThreadInfo &thread_info) {
            768;
   }
 
-  return std::clamp(eval + bonus1 + bonus2, -MateScore, MateScore);
+  return std::clamp(eval + bonus1, -MateScore, MateScore);
 }
 
 void ss_push(Position &position, ThreadInfo &thread_info, Move move) {
