@@ -239,11 +239,12 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
   TTEntry entry = TT[hash_to_idx(hash)];
 
   int entry_type = EntryTypes::None,
-      tt_score = ScoreNone; // Initialize TT variables and check for a hash hit
+      tt_score = ScoreNone,
+      tt_static_eval = ScoreNone; // Initialize TT variables and check for a hash hit
 
   if (entry.position_key == get_hash_low_bits(hash)) {
-
     entry_type = entry.type, tt_score = entry.score;
+    tt_static_eval = entry.static_eval;
     if (tt_score > MateScore) {
       tt_score -= ply;
     } else if (tt_score < -MateScore) {
@@ -266,7 +267,9 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
 
   if (!in_check) { // If we're not in check and static eval beats beta, we can
                    // immediately return
-    best_score = static_eval = eval(position, thread_info);
+    
+    best_score = static_eval = 
+        (tt_static_eval == ScoreNone ? eval(position, thread_info) : tt_static_eval);
 
     if (entry_type == EntryTypes::Exact ||
         (entry_type == EntryTypes::UBound && tt_score < static_eval) ||
@@ -416,12 +419,14 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
 
   TTEntry entry = TT[hash_to_idx(hash)];
 
-  int entry_type = EntryTypes::None, tt_score = ScoreNone, tt_move = MoveNone;
+  int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
+      tt_score = ScoreNone, tt_move = MoveNone;
   uint16_t hash_key = get_hash_low_bits(hash);
 
   if (entry.position_key == hash_key && !singular_search) { // TT probe
 
-    entry_type = entry.type, tt_score = entry.score, tt_move = entry.best_move;
+    entry_type = entry.type, tt_static_eval = entry.static_eval,
+    tt_score = entry.score, tt_move = entry.best_move;
     if (tt_score > MateScore) {
       tt_score -= ply;
     } else if (tt_score < -MateScore) {
@@ -449,7 +454,7 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
   } else if (singular_search) {
     static_eval = thread_info.game_hist[thread_info.game_ply].static_eval;
   } else {
-    static_eval = eval(position, thread_info);
+    static_eval = (tt_static_eval == ScoreNone ? eval(position, thread_info) : tt_static_eval);
   }
 
   thread_info.game_hist[thread_info.game_ply].static_eval = static_eval;
