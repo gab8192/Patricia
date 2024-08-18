@@ -271,8 +271,12 @@ bool is_cap(const Position &position, Move &move) {
           is_queen_promo((move)));
 }
 
-void update_nnue_state(NNUE_State &nnue_state, Move move,
+void next_nnue_state(NNUE_State &nnue_state, Move move,
                        const Position &position) { // Updates the nnue state
+
+  nnue_state.m_curr++;
+  nnue_state.m_curr->updated = false;
+  FT_Updates& updates = nnue_state.m_curr->pending_updates;
 
   int from = extract_from(move), to = extract_to(move);
   int from_piece = position.board[from];
@@ -303,7 +307,10 @@ void update_nnue_state(NNUE_State &nnue_state, Move move,
     captured_square =
         MailboxToStandard_NNUE[captured_square]; // update the piece that was
                                                  // captured if applicable
-    nnue_state.add_sub_sub(from_piece, from, to_piece, to, captured_piece, captured_square);
+    updates.type = FT_Updates::CAPTURE;
+    updates.sub0 = {from, from_piece};
+    updates.add0 = {to, to_piece};
+    updates.sub1 = {captured_square, captured_piece};
   }
 
   else if (from_piece - color == Pieces::WKing &&
@@ -311,19 +318,28 @@ void update_nnue_state(NNUE_State &nnue_state, Move move,
           Directions::East * 2) { // update the rook that moved if we castled
 
     int indx = color ? 0x70 : 0;
+    int rook_from, rook_to;
+
+    updates.type = FT_Updates::CASTLING;
+    updates.sub0 = {from, from_piece};
+    updates.add0 = {to, from_piece};
 
     if (get_file(to_square) > 4) {
-
-      nnue_state.add_add_sub_sub(from_piece, from, to, Pieces::WRook + color, MailboxToStandard_NNUE[indx + 7], MailboxToStandard_NNUE[indx + 5]);
-
+      rook_from = MailboxToStandard_NNUE[indx + 7];
+      rook_to = MailboxToStandard_NNUE[indx + 5];
     } else {
-
-      nnue_state.add_add_sub_sub(from_piece, from, to, Pieces::WRook + color, MailboxToStandard_NNUE[indx], MailboxToStandard_NNUE[indx + 3]);
+      rook_from = MailboxToStandard_NNUE[indx];
+      rook_to = MailboxToStandard_NNUE[indx + 3];
     }
+
+    updates.sub1 = {rook_from, Pieces::WRook + color};
+    updates.add1 = {rook_to, Pieces::WRook + color};
   }
 
   else{
-    nnue_state.add_sub(from_piece, from, to_piece, to);
+    updates.type = FT_Updates::NORMAL;
+    updates.sub0 = {from, from_piece};
+    updates.add0 = {to, to_piece};
   }
 }
 

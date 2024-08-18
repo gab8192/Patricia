@@ -308,7 +308,7 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
     if (make_move(moved_position, move, thread_info, Updates::UpdateAll)) {
       continue;
     }
-    update_nnue_state(thread_info.nnue_state, move, position);
+    next_nnue_state(thread_info.nnue_state, move, position);
 
     ss_push(position, thread_info, move);
     int score = -qsearch(-beta, -alpha, moved_position, thread_info, TT);
@@ -638,7 +638,7 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
       }
     }
 
-    update_nnue_state(thread_info.nnue_state, move, position);
+    next_nnue_state(thread_info.nnue_state, move, position);
 
     ss_push(position, thread_info, move);
 

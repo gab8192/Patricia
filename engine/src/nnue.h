@@ -37,6 +37,19 @@ const auto QA_VEC = get_int16_vec(QA);
 
 constexpr int QAB = QA * QB;
 
+struct Square_Piece {
+  int sq;
+  int pc;
+};
+
+struct FT_Updates {
+  Square_Piece sub0, add0, sub1, add1;
+
+  enum {
+    NORMAL, CAPTURE, CASTLING
+  } type;
+};
+
 struct alignas(64) NNUE_Params {
   std::array<int16_t, INPUT_SIZE * LAYER1_SIZE> feature_v;
   std::array<int16_t, LAYER1_SIZE> feature_bias;
@@ -50,6 +63,8 @@ const NNUE_Params &g_nnue = *reinterpret_cast<const NNUE_Params *>(g_nnueData);
 template <size_t HiddenSize> struct alignas(64) Accumulator {
   std::array<int16_t, HiddenSize> white;
   std::array<int16_t, HiddenSize> black;
+  bool updated;
+  FT_Updates pending_updates;
 
   inline void init(std::span<const int16_t, HiddenSize> bias) {
     std::memcpy(white.data(), bias.data(), bias.size_bytes());
@@ -265,4 +280,5 @@ void NNUE_State::reset_nnue(Position position) {
                            MailboxToStandard_NNUE[square]);
     }
   }
+  m_curr->updated = true;
 }
