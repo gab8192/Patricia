@@ -324,6 +324,9 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
         !in_check) { // If we're not in check only look at good captures
       break;
     }
+
+    __builtin_prefetch(&TT[hash_to_idx( key_after(position, move) )]);
+
     Position moved_position = position;
     if (make_move(moved_position, move, thread_info, Updates::UpdateAll)) {
       continue;
@@ -582,6 +585,8 @@ if (ply && is_draw(position, thread_info)) { // Draw detection
         continue;
       }
     }
+
+    __builtin_prefetch(&TT[hash_to_idx( key_after(position, move) )]);
 
     int move_score = moves.scores[indx];
 

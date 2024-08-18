@@ -343,6 +343,25 @@ void next_nnue_state(NNUE_State &nnue_state, Move move,
   }
 }
 
+uint64_t key_after(Position &position, Move move) {
+
+  uint64_t temp_hash = position.zobrist_key;
+
+  int from = extract_from(move), to = extract_to(move);
+
+  // update material counts and 50 move rules for a capture
+  if (position.board[to]) {
+    temp_hash ^=
+        zobrist_keys[get_zobrist_key(position.board[to], standard(to))];
+  }
+
+  temp_hash ^= zobrist_keys[get_zobrist_key(position.board[from], standard(from))];
+  temp_hash ^= zobrist_keys[get_zobrist_key(position.board[from], standard(to))];
+  temp_hash ^= zobrist_keys[side_index];
+
+  return temp_hash;
+}
+
 int make_move(Position &position, Move move, ThreadInfo &thread_info,
               int update_flag) { // Perform a move on the board.
 
@@ -512,8 +531,6 @@ int make_move(Position &position, Move move, ThreadInfo &thread_info,
   }
   position.ep_square = ep_square;
   position.zobrist_key = temp_hash;
-
-  __builtin_prefetch(&TT[hash_to_idx(temp_hash)]);
 
   return 0;
 }
