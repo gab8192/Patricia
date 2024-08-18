@@ -60,6 +60,21 @@ struct alignas(64) NNUE_Params {
 INCBIN(nnue, "src/abby.nnue");
 const NNUE_Params &g_nnue = *reinterpret_cast<const NNUE_Params *>(g_nnueData);
 
+std::pair<size_t, size_t> feature_indices(int piece, int sq) {
+  constexpr size_t color_stride = 64 * 6;
+  constexpr size_t piece_stride = 64;
+
+  const auto base = static_cast<int>(piece / 2 - 1);
+  const size_t color = piece & 1;
+
+  const auto whiteIdx =
+      color * color_stride + base * piece_stride + static_cast<size_t>(sq ^ 56);
+  const auto blackIdx = (color ^ 1) * color_stride + base * piece_stride +
+                        (static_cast<size_t>(sq));
+
+  return {whiteIdx, blackIdx};
+}
+
 template <size_t HiddenSize> struct alignas(64) Accumulator {
   std::array<int16_t, HiddenSize> white;
   std::array<int16_t, HiddenSize> black;
@@ -168,21 +183,6 @@ inline void subtract_from_all(std::array<int16_t, size> &output,
   for (size_t i = 0; i < size; ++i) {
     output[i] = input[i] - delta[offset + i];
   }
-}
-
-std::pair<size_t, size_t> feature_indices(int piece, int sq) {
-  constexpr size_t color_stride = 64 * 6;
-  constexpr size_t piece_stride = 64;
-
-  const auto base = static_cast<int>(piece / 2 - 1);
-  const size_t color = piece & 1;
-
-  const auto whiteIdx =
-      color * color_stride + base * piece_stride + static_cast<size_t>(sq ^ 56);
-  const auto blackIdx = (color ^ 1) * color_stride + base * piece_stride +
-                        (static_cast<size_t>(sq));
-
-  return {whiteIdx, blackIdx};
 }
 
 inline int32_t
