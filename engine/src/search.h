@@ -768,9 +768,8 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
     // Update history scores and the killer move.
 
     if (is_capture) {
-
-      update_history(thread_info.CapHistScores[piece][sq], bonus);
-
+      int cap_type = position.board[sq] / 2;
+      update_history(thread_info.CapHistScores[piece][sq][cap_type], bonus);
     } else {
 
       int their_last =
@@ -828,8 +827,9 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
       Move move = captures[i];
 
       int piece_m = position.board[extract_from(move)], sq_m = extract_to(move);
+      int cap_type_m = position.board[sq_m] / 2;
 
-      update_history(thread_info.CapHistScores[piece_m][sq_m], -bonus);
+      update_history(thread_info.CapHistScores[piece_m][sq_m][cap_type_m], -bonus);
     }
   }
 

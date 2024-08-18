@@ -299,8 +299,8 @@ void score_moves(Position &position, ThreadInfo &thread_info,
                                  TTMoveScore * !SEE(position, move, -107);
 
       int piece = position.board[extract_from(move)], to = extract_to(move);
-
-      scored_moves.scores[idx] += thread_info.CapHistScores[piece][to];
+      int cap_type = position.board[to] / 2;
+      scored_moves.scores[idx] += thread_info.CapHistScores[piece][to][cap_type];
 
     }
 
