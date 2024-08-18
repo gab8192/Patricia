@@ -187,3 +187,18 @@ int64_t time_elapsed(std::chrono::steady_clock::time_point start_time) {
   return std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time)
       .count();
 }
+
+void fetch_after(Position &position, Move move, bool is_cap){
+
+  uint64_t temp = position.zobrist_key, from = extract_from(move), to = extract_to(move);
+
+  temp ^= zobrist_keys[get_zobrist_key(position.board[from], standard(from))];
+  temp ^= zobrist_keys[get_zobrist_key(position.board[from], standard(to))];
+  temp ^= zobrist_keys[side_index];
+  
+  if (is_cap && position.board[to] != Pieces::Blank){
+    temp ^= zobrist_keys[get_zobrist_key(position.board[to], standard(to))];
+  }
+
+  __builtin_prefetch(& TT[hash_to_idx(temp)]);
+}

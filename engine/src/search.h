@@ -327,10 +327,14 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
         !in_check) { // If we're not in check only look at good captures
       break;
     }
+
+    fetch_after(position, move, is_cap(position, move));
+
     Position moved_position = position;
     if (make_move(moved_position, move, thread_info, Updates::UpdateAll)) {
       continue;
     }
+
     next_nnue_state(thread_info.nnue_state, move, position);
 
     ss_push(position, thread_info, move);
@@ -585,6 +589,8 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
     }
 
     int move_score = moves.scores[indx];
+
+    fetch_after(position, move, is_cap(position, move));
 
     Position moved_position = position;
     if (move == excluded_move ||
