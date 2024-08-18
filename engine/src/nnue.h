@@ -132,7 +132,7 @@ template <size_t HiddenSize> struct alignas(64) Accumulator {
   inline void apply_updates(Accumulator<HiddenSize>* parent) {
     FT_Updates u = pending_updates;
     if (pending_updates.type == FT_Updates::NORMAL) {
-      add_sub(u.sub0.pc, u.sub0.sq, u.add0.pc, u.sub0.sq, parent);
+      add_sub(u.sub0.pc, u.sub0.sq, u.add0.pc, u.add0.sq, parent);
     } else if (pending_updates.type == FT_Updates::CAPTURE) {
       add_sub_sub(u.sub0.pc, u.sub0.sq, u.add0.pc, u.add0.sq,
                   u.sub1.pc, u.sub1.sq, parent);
