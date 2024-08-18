@@ -82,6 +82,26 @@ int eval(const Position &position, ThreadInfo &thread_info) {
   int color = position.color;
   int root_color = thread_info.search_ply % 2 ? color ^ 1 : color;
 
+  Accumulator<LAYER1_SIZE>* curr_acc = thread_info.nnue_state.m_curr;
+
+  if (! curr_acc->updated) {
+    // Do lazy updates
+    Accumulator<LAYER1_SIZE>* iter_acc = curr_acc;
+    while (true) {
+      iter_acc--;
+
+      if (iter_acc->updated) {
+        Accumulator<LAYER1_SIZE>* last_updated_acc = iter_acc;
+        while (last_updated_acc != curr_acc) {
+          (last_updated_acc+1)->apply_updates(last_updated_acc);
+          last_updated_acc++;
+        }
+        break;
+      }
+    }
+
+  }
+
   int eval = thread_info.nnue_state.evaluate(color);
 
   // Patricia is much less dependent on explicit eval twiddling than before, but

@@ -70,6 +70,78 @@ template <size_t HiddenSize> struct alignas(64) Accumulator {
     std::memcpy(white.data(), bias.data(), bias.size_bytes());
     std::memcpy(black.data(), bias.data(), bias.size_bytes());
   }
+
+  inline void add_sub(int from_piece, int from, int to_piece, int to,
+                      Accumulator<HiddenSize>* parent) {
+
+    const auto [white_from, black_from] = feature_indices(from_piece, from);
+    const auto [white_to, black_to] = feature_indices(to_piece, to);
+
+    for (size_t i = 0; i < LAYER1_SIZE; ++i) {
+      white[i] = parent->white[i] +
+                          g_nnue.feature_v[white_to * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[white_from * LAYER1_SIZE + i];
+
+      black[i] = parent->black[i] +
+                          g_nnue.feature_v[black_to * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[black_from * LAYER1_SIZE + i];
+    }
+  }
+
+  inline void add_sub_sub(int from_piece, int from, int to_piece, int to, int captured,
+                              int captured_sq, Accumulator<HiddenSize>* parent) {
+    const auto [white_from, black_from] = feature_indices(from_piece, from);
+    const auto [white_to, black_to] = feature_indices(to_piece, to);
+    const auto [white_capt, black_capt] = feature_indices(captured, captured_sq);
+
+    for (size_t i = 0; i < LAYER1_SIZE; ++i) {
+      white[i] = parent->white[i] +
+                          g_nnue.feature_v[white_to * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[white_from * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[white_capt * LAYER1_SIZE + i];
+
+      black[i] = parent->black[i] +
+                          g_nnue.feature_v[black_to * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[black_from * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[black_capt * LAYER1_SIZE + i];
+    }
+  }
+
+  inline void add_add_sub_sub(int piece1, int from1, int to1, int piece2, int from2, int to2,
+                              Accumulator<HiddenSize>* parent){
+    const auto [white_from1, black_from1] = feature_indices(piece1, from1);
+    const auto [white_to1, black_to1] = feature_indices(piece1, to1);
+    const auto [white_from2, black_from2] = feature_indices(piece2, from2);
+    const auto [white_to2, black_to2] = feature_indices(piece2, to2);
+
+    for (size_t i = 0; i < LAYER1_SIZE; ++i){
+      white[i] = parent->white[i] +
+                          g_nnue.feature_v[white_to1 * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[white_from1 * LAYER1_SIZE + i] +
+                          g_nnue.feature_v[white_to2 * LAYER1_SIZE + i] - 
+                          g_nnue.feature_v[white_from2 * LAYER1_SIZE + i];
+
+      black[i] = parent->black[i] +
+                          g_nnue.feature_v[black_to1 * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[black_from1 * LAYER1_SIZE + i] +
+                          g_nnue.feature_v[black_to2 * LAYER1_SIZE + i] -
+                          g_nnue.feature_v[black_from2 * LAYER1_SIZE + i];
+    }
+  }
+
+  inline void apply_updates(Accumulator<HiddenSize>* parent) {
+    FT_Updates u = pending_updates;
+    if (pending_updates.type == FT_Updates::NORMAL) {
+      add_sub(u.sub0.pc, u.sub0.sq, u.add0.pc, u.sub0.sq, parent);
+    } else if (pending_updates.type == FT_Updates::CAPTURE) {
+      add_sub_sub(u.sub0.pc, u.sub0.sq, u.add0.pc, u.add0.sq,
+                  u.sub1.pc, u.sub1.sq, parent);
+    } else if (pending_updates.type == FT_Updates::CASTLING) {
+      add_add_sub_sub(u.sub0.pc, u.sub0.sq, u.add0.sq,
+                      u.sub1.pc, u.sub1.sq, u.add1.sq, parent);
+    } 
+    updated = true;
+  }
 };
 
 constexpr int32_t screlu(int16_t x) {
@@ -179,69 +251,6 @@ public:
 
   NNUE_State() {}
 };
-
-
-void NNUE_State::add_sub(int from_piece, int from, int to_piece, int to) {
-
-  const auto [white_from, black_from] = feature_indices(from_piece, from);
-  const auto [white_to, black_to] = feature_indices(to_piece, to);
-
-  for (size_t i = 0; i < LAYER1_SIZE; ++i) {
-    m_curr[1].white[i] = m_curr->white[i] +
-                         g_nnue.feature_v[white_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_from * LAYER1_SIZE + i];
-
-    m_curr[1].black[i] = m_curr->black[i] +
-                         g_nnue.feature_v[black_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from * LAYER1_SIZE + i];
-  }
-
-  m_curr++;
-}
-
-void NNUE_State::add_sub_sub(int from_piece, int from, int to_piece, int to, int captured,
-                             int captured_sq) {
-  const auto [white_from, black_from] = feature_indices(from_piece, from);
-  const auto [white_to, black_to] = feature_indices(to_piece, to);
-  const auto [white_capt, black_capt] = feature_indices(captured, captured_sq);
-
-  for (size_t i = 0; i < LAYER1_SIZE; ++i) {
-    m_curr[1].white[i] = m_curr->white[i] +
-                         g_nnue.feature_v[white_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_from * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_capt * LAYER1_SIZE + i];
-
-    m_curr[1].black[i] = m_curr->black[i] +
-                         g_nnue.feature_v[black_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_capt * LAYER1_SIZE + i];
-  }
-
-  m_curr++;
-}
-
-void NNUE_State::add_add_sub_sub(int piece1, int from1, int to1, int piece2, int from2, int to2){
-  const auto [white_from1, black_from1] = feature_indices(piece1, from1);
-  const auto [white_to1, black_to1] = feature_indices(piece1, to1);
-  const auto [white_from2, black_from2] = feature_indices(piece2, from2);
-  const auto [white_to2, black_to2] = feature_indices(piece2, to2);
-
-  for (size_t i = 0; i < LAYER1_SIZE; ++i){
-    m_curr[1].white[i] = m_curr->white[i] +
-                         g_nnue.feature_v[white_to1 * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_from1 * LAYER1_SIZE + i] +
-                         g_nnue.feature_v[white_to2 * LAYER1_SIZE + i] - 
-                         g_nnue.feature_v[white_from2 * LAYER1_SIZE + i];
-
-    m_curr[1].black[i] = m_curr->black[i] +
-                         g_nnue.feature_v[black_to1 * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from1 * LAYER1_SIZE + i] +
-                         g_nnue.feature_v[black_to2 * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from2 * LAYER1_SIZE + i];
-  }
-
-  m_curr++;
-}
 
 void NNUE_State::pop() { m_curr--; }
 
