@@ -114,9 +114,22 @@ struct TTEntry {
   int16_t score;  // Score of the position
   Move best_move; // Best move in the position
   uint8_t depth;  // Depth that the entry was searched to
-  uint8_t type;   // entry type
-  uint8_t age;
+  uint8_t age_bound; // Age (upper 6 bits) and bound (lower 2 bits)
+
+  uint8_t get_type();
+
+  uint8_t get_age();
 };
+
+uint8_t TTEntry::get_type() {
+  return age_bound & 0b11;
+}
+
+uint8_t TTEntry::get_age() {
+  return age_bound >> 2;
+}
+
+constexpr uint8_t MaxAge = 1 << 6;
 
 struct RootMoveInfo {
   Move move;

@@ -252,7 +252,7 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
       tt_score = ScoreNone; // Initialize TT variables and check for a hash hit
 
   if (tt_hit) {
-    entry_type = entry.type;
+    entry_type = entry.get_type();
     tt_static_eval = entry.static_eval;
     tt_score = score_from_tt(entry.score, ply);
   }
@@ -436,7 +436,7 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
   bool tt_hit = entry.position_key == get_hash_low_bits(hash);
 
   if (tt_hit && !singular_search) { // TT probe
-    entry_type = entry.type;
+    entry_type = entry.get_type();
     tt_static_eval = entry.static_eval;
     tt_score = score_from_tt(entry.score, ply);
     tt_move = entry.best_move;
@@ -1105,7 +1105,7 @@ void search_position(Position &position, ThreadInfo &thread_info,
     }
   }
 
-  thread_info.searches++;
+  thread_info.searches = (thread_info.searches + 1) % MaxAge;
 
   thread_data.threads.clear();
 }

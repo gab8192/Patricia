@@ -131,13 +131,13 @@ void insert_entry(uint64_t hash, int depth, Move best_move, int32_t static_eval,
 
   if (TT[indx].position_key == hash_key &&
       !(bound_type == EntryTypes::Exact &&
-        TT[indx].type != EntryTypes::Exact)) {
+        TT[indx].get_type() != EntryTypes::Exact)) {
 
-    uint8_t age_diff = searches - TT[indx].age;
+    uint8_t age_diff = searches - TT[indx].get_age();
 
     int new_bonus =
         depth + bound_type + (age_diff * age_diff * 10 / AgeDiffDiv);
-    int old_bonus = TT[indx].depth + TT[indx].type;
+    int old_bonus = TT[indx].depth + TT[indx].get_type();
 
     if (old_bonus * OldBonusMult > new_bonus * NewBonusMult) {
       return;
@@ -149,10 +149,10 @@ void insert_entry(uint64_t hash, int depth, Move best_move, int32_t static_eval,
   }
 
   TT[indx].position_key = hash_key,
-  TT[indx].depth = static_cast<uint8_t>(depth), TT[indx].type = bound_type,
+  TT[indx].depth = static_cast<uint8_t>(depth),
   TT[indx].static_eval = static_eval,
-  TT[indx].score = score;
-  TT[indx].age = searches;
+  TT[indx].score = score,
+  TT[indx].age_bound = (searches << 2) | bound_type;
 }
 
 uint64_t calculate(const Position &position) { // Calculates the zobrist key of
