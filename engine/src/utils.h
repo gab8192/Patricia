@@ -75,9 +75,9 @@ struct ThreadData {
 ThreadData thread_data;
 
 uint64_t TT_size = (1 << 20);
-std::vector<TTEntry> TT(TT_size);
+std::vector<TTBucket> TT(TT_size);
 
-void new_game(ThreadInfo &thread_info, std::vector<TTEntry> &TT) {
+void new_game(ThreadInfo &thread_info, std::vector<TTBucket> &TT) {
   // Reset TT and other thread_info values for a new game
 
   thread_info.game_ply = 0;
@@ -119,6 +119,13 @@ void resize_TT(int size) {
 
 uint64_t hash_to_idx(uint64_t hash) {
   return (uint128_t(hash) * uint128_t(TT_size)) >> 64;
+}
+
+TTEntry& probe_entry(uint64_t hash, std::vector<TTBucket> &TT) {
+
+  TTBucket& bucket = TT[hash_to_idx(hash)];
+
+  return bucket.entries[0];
 }
 
 void insert_entry(TTEntry& entry, uint64_t hash, int depth, Move best_move, 

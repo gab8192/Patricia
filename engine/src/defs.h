@@ -94,6 +94,8 @@ struct Position {
   uint8_t halfmoves;
 };
 
+constexpr int MaxSearchDepth = 127;
+
 struct GameHistory { // keeps the state of the board at a particular point in
                      // the game
   uint64_t position_key; // Hash key of the position at the time
@@ -106,7 +108,10 @@ struct GameHistory { // keeps the state of the board at a particular point in
   int32_t static_eval;
 };
 
-constexpr int MaxSearchDepth = 127;
+// TT stuff
+
+constexpr int BucketEntries = 3;
+constexpr uint8_t MaxAge = 1 << 6;
 
 struct TTEntry {
   uint16_t position_key; // The lower 16 bits of the hash key are stored
@@ -129,7 +134,10 @@ uint8_t TTEntry::get_age() {
   return age_bound >> 2;
 }
 
-constexpr uint8_t MaxAge = 1 << 6;
+struct TTBucket {
+  std::array<TTEntry, 3> entries;
+  int16_t padding;
+};
 
 struct RootMoveInfo {
   Move move;
