@@ -245,16 +245,16 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
   }
 
   uint64_t hash = position.zobrist_key;
-  TTEntry entry = TT[hash_to_idx(hash)];
-  bool tt_hit = entry.position_key == get_hash_low_bits(hash);
+  TTEntry* entry = &(TT[hash_to_idx(hash)]);
+  bool tt_hit = entry->position_key == get_hash_low_bits(hash);
 
   int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
       tt_score = ScoreNone; // Initialize TT variables and check for a hash hit
 
   if (tt_hit) {
-    entry_type = entry.get_type();
-    tt_static_eval = entry.static_eval;
-    tt_score = score_from_tt(entry.score, ply);
+    entry_type = entry->get_type();
+    tt_static_eval = entry->static_eval;
+    tt_score = score_from_tt(entry->score, ply);
   }
 
   if (tt_score != ScoreNone) {
@@ -344,8 +344,8 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
                : raised_alpha     ? EntryTypes::Exact
                                   : EntryTypes::UBound;
 
-  insert_entry(hash, 0, best_move, static_eval, score_to_tt(best_score, ply),
-               entry_type, thread_info.searches, TT);
+  insert_entry(*entry, hash, 0, best_move, static_eval, score_to_tt(best_score, ply),
+               entry_type, thread_info.searches);
 
   return best_score;
 }
@@ -429,20 +429,20 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
     }
   }
 
-  TTEntry entry = TT[hash_to_idx(hash)];
+  TTEntry* entry = & (TT[hash_to_idx(hash)]);
 
   int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
       tt_score = ScoreNone, tt_move = MoveNone;
-  bool tt_hit = entry.position_key == get_hash_low_bits(hash);
+  bool tt_hit = entry->position_key == get_hash_low_bits(hash);
 
   if (tt_hit && !singular_search) { // TT probe
-    entry_type = entry.get_type();
-    tt_static_eval = entry.static_eval;
-    tt_score = score_from_tt(entry.score, ply);
-    tt_move = entry.best_move;
+    entry_type = entry->get_type();
+    tt_static_eval = entry->static_eval;
+    tt_score = score_from_tt(entry->score, ply);
+    tt_move = entry->best_move;
   }
 
-  if (tt_score != ScoreNone && !is_pv && entry.depth >= depth) {
+  if (tt_score != ScoreNone && !is_pv && entry->depth >= depth) {
     // If we get a useful score from the TT and it's
     // searched to at least the same depth we would
     // have searched, then we can return
@@ -469,8 +469,8 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
       static_eval = tt_static_eval;
 
     if (!tt_hit) {
-      insert_entry(hash, 0, MoveNone, static_eval, ScoreNone, EntryTypes::None,
-                   thread_info.searches, TT);
+      insert_entry(*entry, hash, 0, MoveNone, static_eval, ScoreNone, EntryTypes::None,
+                   thread_info.searches);
     }
   }
 
@@ -620,10 +620,10 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
 
     if (!root && ply < thread_info.current_iter * 2) {
       if (!singular_search && depth >= SEDepth && move_score == TTMoveScore &&
-          abs(entry.score) < MateScore && entry.depth >= depth - 3 &&
+          abs(entry->score) < MateScore && entry->depth >= depth - 3 &&
           entry_type != EntryTypes::UBound) {
 
-        int sBeta = entry.score - depth * 3;
+        int sBeta = entry->score - depth * 3;
         thread_info.excluded_move = move;
         int sScore = search(sBeta - 1, sBeta, (depth - 1) / 2, cutnode,
                             position, thread_info, TT);
@@ -851,10 +851,9 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
 
   // Add the search results to the TT, accounting for mate scores
   if (!singular_search) {
-    insert_entry(hash, depth, best_move,
+    insert_entry(*entry, hash, depth, best_move,
                  ss->static_eval, score_to_tt(best_score, ply),
-                 entry_type, thread_info.searches,
-                 TT);
+                 entry_type, thread_info.searches);
   }
 
   return best_score;

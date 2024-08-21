@@ -121,38 +121,36 @@ uint64_t hash_to_idx(uint64_t hash) {
   return (uint128_t(hash) * uint128_t(TT_size)) >> 64;
 }
 
-void insert_entry(uint64_t hash, int depth, Move best_move, int32_t static_eval,
-                  int32_t score, uint8_t bound_type, uint8_t searches,
-                  std::vector<TTEntry>
-                      &TT) { // Inserts an entry into the transposition table.
+void insert_entry(TTEntry& entry, uint64_t hash, int depth, Move best_move, 
+                  int32_t static_eval, int32_t score, uint8_t bound_type, uint8_t searches)
+{ // Inserts an entry into the transposition table.
                       
-  int indx = hash_to_idx(hash);
   uint16_t hash_key = get_hash_low_bits(hash);
 
-  if (TT[indx].position_key == hash_key &&
+  if (entry.position_key == hash_key &&
       !(bound_type == EntryTypes::Exact &&
-        TT[indx].get_type() != EntryTypes::Exact)) {
+        entry.get_type() != EntryTypes::Exact)) {
 
-    uint8_t age_diff = searches - TT[indx].get_age();
+    uint8_t age_diff = searches - entry.get_age();
 
     int new_bonus =
         depth + bound_type + (age_diff * age_diff * 10 / AgeDiffDiv);
-    int old_bonus = TT[indx].depth + TT[indx].get_type();
+    int old_bonus = entry.depth + entry.get_type();
 
     if (old_bonus * OldBonusMult > new_bonus * NewBonusMult) {
       return;
     }
   }
 
-  if (best_move != MoveNone || hash_key != TT[indx].position_key) {
-    TT[indx].best_move = best_move;
+  if (best_move != MoveNone || hash_key != entry.position_key) {
+    entry.best_move = best_move;
   }
 
-  TT[indx].position_key = hash_key,
-  TT[indx].depth = static_cast<uint8_t>(depth),
-  TT[indx].static_eval = static_eval,
-  TT[indx].score = score,
-  TT[indx].age_bound = (searches << 2) | bound_type;
+  entry.position_key = hash_key,
+  entry.depth = static_cast<uint8_t>(depth),
+  entry.static_eval = static_eval,
+  entry.score = score,
+  entry.age_bound = (searches << 2) | bound_type;
 }
 
 uint64_t calculate(const Position &position) { // Calculates the zobrist key of
