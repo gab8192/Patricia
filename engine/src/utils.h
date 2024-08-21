@@ -112,7 +112,7 @@ int32_t score_from_tt(int32_t score, int32_t ply) {
 
 void resize_TT(int size) {
   TT_size =
-      static_cast<uint64_t>(size) * 1024 * 1024 / sizeof(TTEntry);
+      static_cast<uint64_t>(size) * 1024 * 1024 / sizeof(TTBucket);
   TT.resize(TT_size);
   std::memset(&TT[0], 0, TT_size * sizeof(TT[0]));
 }
