@@ -245,8 +245,8 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
   }
 
   uint64_t hash = position.zobrist_key;
-  TTEntry& entry = probe_entry(hash, TT);
-  bool tt_hit = entry.position_key == get_hash_low_bits(hash);
+  bool tt_hit;
+  TTEntry& entry = probe_entry(hash, tt_hit, thread_info.searches, TT);
 
   int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
       tt_score = ScoreNone; // Initialize TT variables and check for a hash hit
@@ -429,11 +429,11 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
     }
   }
 
-  TTEntry& entry = probe_entry(hash, TT);
+  bool tt_hit;
+  TTEntry& entry = probe_entry(hash, tt_hit, thread_info.searches, TT);
 
   int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
       tt_score = ScoreNone, tt_move = MoveNone;
-  bool tt_hit = entry.position_key == get_hash_low_bits(hash);
 
   if (tt_hit && !singular_search) { // TT probe
     entry_type = entry.get_type();

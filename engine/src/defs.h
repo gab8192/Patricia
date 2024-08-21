@@ -111,7 +111,7 @@ struct GameHistory { // keeps the state of the board at a particular point in
 // TT stuff
 
 constexpr int BucketEntries = 3;
-constexpr uint8_t MaxAge = 1 << 6;
+constexpr int MaxAge = 1 << 6;
 
 struct TTEntry {
   uint16_t position_key; // The lower 16 bits of the hash key are stored
@@ -123,19 +123,19 @@ struct TTEntry {
 
   uint8_t get_type();
 
-  uint8_t get_age();
+  int get_age();
 };
 
 uint8_t TTEntry::get_type() {
   return age_bound & 0b11;
 }
 
-uint8_t TTEntry::get_age() {
+int TTEntry::get_age() {
   return age_bound >> 2;
 }
 
 struct TTBucket {
-  std::array<TTEntry, 3> entries;
+  std::array<TTEntry, BucketEntries> entries;
   int16_t padding;
 };
 

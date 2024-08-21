@@ -121,11 +121,40 @@ uint64_t hash_to_idx(uint64_t hash) {
   return (uint128_t(hash) * uint128_t(TT_size)) >> 64;
 }
 
-TTEntry& probe_entry(uint64_t hash, std::vector<TTBucket> &TT) {
+int entry_quality(TTEntry& entry, int searches) {
+  int age_diff = (MaxAge + searches - entry.get_age()) % MaxAge;
+  return entry.depth - age_diff * 8;
+}
 
-  TTBucket& bucket = TT[hash_to_idx(hash)];
+TTEntry& probe_entry(uint64_t hash, bool &hit, uint8_t searches, std::vector<TTBucket> &TT) {
 
-  return bucket.entries[0];
+  uint16_t hash_key = get_hash_low_bits(hash);
+  auto& entries = TT[hash_to_idx(hash)].entries;
+
+  for (int i = 0; i < BucketEntries; i++) {
+    bool empty =   entries[i].score == 0 
+                && entries[i].get_type() == EntryTypes::None;
+
+    if (empty || entries[i].position_key == hash_key) {
+      hit = !empty;
+      entries[i].age_bound =  (searches << 2) | entries[i].age_bound;
+      return entries[i];
+    }
+  }
+
+  TTEntry* worst = & (entries[0]);
+  int worst_quality = entry_quality(*worst, searches);
+
+  for (int i = 1; i < BucketEntries; i++) {
+    int this_quality = entry_quality(entries[i], searches);
+    if (this_quality < worst_quality) {
+      worst = & (entries[i]);
+      worst_quality = this_quality;
+    }
+  }
+
+  hit = false;
+  return *worst;
 }
 
 void insert_entry(TTEntry& entry, uint64_t hash, int depth, Move best_move, 
@@ -134,23 +163,14 @@ void insert_entry(TTEntry& entry, uint64_t hash, int depth, Move best_move,
                       
   uint16_t hash_key = get_hash_low_bits(hash);
 
-  if (entry.position_key == hash_key &&
-      !(bound_type == EntryTypes::Exact &&
-        entry.get_type() != EntryTypes::Exact)) {
-
-    uint8_t age_diff = searches - entry.get_age();
-
-    int new_bonus =
-        depth + bound_type + (age_diff * age_diff * 10 / AgeDiffDiv);
-    int old_bonus = entry.depth + entry.get_type();
-
-    if (old_bonus * OldBonusMult > new_bonus * NewBonusMult) {
-      return;
-    }
-  }
-
   if (best_move != MoveNone || hash_key != entry.position_key) {
     entry.best_move = best_move;
+  }
+
+  if (entry.position_key == hash_key &&
+      (bound_type != EntryTypes::Exact) &&
+      entry.depth > depth + 4) {
+    return;
   }
 
   entry.position_key = hash_key,
