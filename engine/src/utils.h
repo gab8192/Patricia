@@ -137,7 +137,7 @@ TTEntry& probe_entry(uint64_t hash, bool &hit, uint8_t searches, std::vector<TTB
 
     if (empty || entries[i].position_key == hash_key) {
       hit = !empty;
-      entries[i].age_bound =  (searches << 2) | entries[i].age_bound;
+      entries[i].age_bound =  (searches << 2) | entries[i].get_type();
       return entries[i];
     }
   }
