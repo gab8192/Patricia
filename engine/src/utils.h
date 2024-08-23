@@ -137,7 +137,8 @@ TTEntry& probe_entry(uint64_t hash, bool &hit, uint8_t searches, std::vector<TTB
 
     if (empty || entries[i].position_key == hash_key) {
       hit = !empty;
-      entries[i].age_bound =  (searches << 2) | entries[i].get_type();
+      // update age preserving bound and pv
+      entries[i].age_bound =  (searches << 3) | (entries[i].age_bound & 0b111);
       return entries[i];
     }
   }
@@ -158,7 +159,7 @@ TTEntry& probe_entry(uint64_t hash, bool &hit, uint8_t searches, std::vector<TTB
 }
 
 void insert_entry(TTEntry& entry, uint64_t hash, int depth, Move best_move, 
-                  int32_t static_eval, int32_t score, uint8_t bound_type, uint8_t searches)
+                  int32_t static_eval, int32_t score, uint8_t bound_type, bool pv, uint8_t searches)
 { // Inserts an entry into the transposition table.
                       
   uint16_t hash_key = get_hash_low_bits(hash);
@@ -177,7 +178,7 @@ void insert_entry(TTEntry& entry, uint64_t hash, int depth, Move best_move,
   entry.depth = static_cast<uint8_t>(depth),
   entry.static_eval = static_eval,
   entry.score = score,
-  entry.age_bound = (searches << 2) | bound_type;
+  entry.age_bound = (searches << 3) | (pv << 2) | bound_type;
 }
 
 uint64_t calculate(const Position &position) { // Calculates the zobrist key of

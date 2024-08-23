@@ -250,11 +250,13 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
 
   int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
       tt_score = ScoreNone; // Initialize TT variables and check for a hash hit
+  bool tt_pv = false;
 
   if (tt_hit) {
     entry_type = entry.get_type();
     tt_static_eval = entry.static_eval;
     tt_score = score_from_tt(entry.score, ply);
+    tt_pv = entry.was_pv();
   }
 
   if (tt_score != ScoreNone) {
@@ -345,7 +347,7 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
                                   : EntryTypes::UBound;
 
   insert_entry(entry, hash, 0, best_move, static_eval, score_to_tt(best_score, ply),
-               entry_type, thread_info.searches);
+               entry_type, tt_pv, thread_info.searches);
 
   return best_score;
 }
@@ -433,12 +435,14 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
 
   int entry_type = EntryTypes::None, tt_static_eval = ScoreNone,
       tt_score = ScoreNone, tt_move = MoveNone;
+  bool tt_pv = is_pv;
 
   if (tt_hit && !singular_search) { // TT probe
     entry_type = entry.get_type();
     tt_static_eval = entry.static_eval;
     tt_score = score_from_tt(entry.score, ply);
     tt_move = entry.best_move;
+    tt_pv |= entry.was_pv();
   }
 
   if (tt_score != ScoreNone && !is_pv && entry.depth >= depth) {
@@ -469,7 +473,7 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
 
     if (!tt_hit) {
       insert_entry(entry, hash, 0, MoveNone, static_eval, ScoreNone, EntryTypes::None,
-                   thread_info.searches);
+                   is_pv, thread_info.searches);
     }
   }
 
@@ -673,7 +677,7 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
       }
 
       // Increase reduction if not in pv
-      R += !is_pv;
+      R += !tt_pv;
 
       // Increase reduction if not improving
       R += !improving;
@@ -852,7 +856,7 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
   if (!singular_search) {
     insert_entry(entry, hash, depth, best_move,
                  ss->static_eval, score_to_tt(best_score, ply),
-                 entry_type, thread_info.searches);
+                 entry_type, tt_pv, thread_info.searches);
   }
 
   return best_score;
