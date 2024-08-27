@@ -267,7 +267,7 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
   }
 
   bool in_check = attacks_square(position, position.kingpos[color], color ^ 1);
-  int best_score = ScoreNone, raised_alpha = false;
+  int best_score = ScoreNone;
   Move best_move = MoveNone;
 
   int static_eval = ScoreNone;
@@ -291,6 +291,9 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
 
     if (best_score >= beta) {
       return best_score;
+    }
+    if (best_score > alpha) {
+      alpha = best_score; 
     }
   }
   MoveInfo moves;
@@ -325,7 +328,6 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
       best_score = score;
       if (score > alpha) {
         best_move = move;
-        raised_alpha = true;
         alpha = score;
       }
       if (score >= beta) { // failing high
@@ -340,9 +342,7 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
 
   // insert entries and return
 
-  entry_type = best_score >= beta ? EntryTypes::LBound
-               : raised_alpha     ? EntryTypes::Exact
-                                  : EntryTypes::UBound;
+  entry_type = best_score >= beta ? EntryTypes::LBound : EntryTypes::UBound;
 
   insert_entry(entry, hash, 0, best_move, static_eval, score_to_tt(best_score, ply),
                entry_type, thread_info.searches);
