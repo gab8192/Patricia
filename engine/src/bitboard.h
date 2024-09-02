@@ -8,68 +8,68 @@
 enum Square : int { // a1 = 0. a8 = 7, etc. thus a1 is the LSB and h8 is the
                     // MSB.
   a1,
-  a2,
-  a3,
-  a4,
-  a5,
-  a6,
-  a7,
-  a8,
   b1,
-  b2,
-  b3,
-  b4,
-  b5,
-  b6,
-  b7,
-  b8,
   c1,
-  c2,
-  c3,
-  c4,
-  c5,
-  c6,
-  c7,
-  c8,
   d1,
-  d2,
-  d3,
-  d4,
-  d5,
-  d6,
-  d7,
-  d8,
   e1,
-  e2,
-  e3,
-  e4,
-  e5,
-  e6,
-  e7,
-  e8,
   f1,
-  f2,
-  f3,
-  f4,
-  f5,
-  f6,
-  f7,
-  f8,
   g1,
-  g2,
-  g3,
-  g4,
-  g5,
-  g6,
-  g7,
-  g8,
   h1,
+  a2,
+  b2,
+  c2,
+  d2,
+  e2,
+  f2,
+  g2,
   h2,
+  a3,
+  b3,
+  c3,
+  d3,
+  e3,
+  f3,
+  g3,
   h3,
+  a4,
+  b4,
+  c4,
+  d4,
+  e4,
+  f4,
+  g4,
   h4,
+  a5,
+  b5,
+  c5,
+  d5,
+  e5,
+  f5,
+  g5,
   h5,
+  a6,
+  b6,
+  c6,
+  d6,
+  e6,
+  f6,
+  g6,
   h6,
+  a7,
+  b7,
+  c7,
+  d7,
+  e7,
+  f7,
+  g7,
   h7,
+  a8,
+  b8,
+  c8,
+  d8,
+  e8,
+  f8,
+  g8,
   h8,
   SqNone
 };
@@ -172,7 +172,7 @@ int get_lsb(uint64_t bb) { return __builtin_ctzll(bb); }
 
 int pop_lsb(uint64_t &bb) {
   int s = get_lsb(bb);
-  bb &= ~1;
+  bb &= (bb-1);
   return s;
 }
 
@@ -304,12 +304,13 @@ void generate_bb(std::string fen, Position_BB &pos) {
   int sq = a8;
 
   for (char c : fen) {
-    if (sq == SqNone || c == ' ') {
+    if (c == ' ') {
       break;
     } else if (c == '/') {
-      sq -= 65;
+      sq -= 8; // drop rank
+      sq -= 8; // reset at file a
     } else if (isdigit(c)) {
-      sq += Directions_BB::North * (c - '0');
+      sq += Directions_BB::East * (c - '0');
     } else {
       int index;
       switch (tolower(c)) {
@@ -339,10 +340,10 @@ void generate_bb(std::string fen, Position_BB &pos) {
 
       bool color_indx = islower(c);
 
-      pos.pieces[index] += (1ull << sq);
-      pos.colors[color_indx] += (1ull << sq);
+      pos.pieces[index] |= (1ull << sq);
+      pos.colors[color_indx] |= (1ull << sq);
 
-      sq += Directions_BB::North;
+      sq += Directions_BB::East;
     }
   }
 }
