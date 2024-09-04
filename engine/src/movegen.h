@@ -151,6 +151,16 @@ int cheapest_attacker(const Position &position, int sq, int color,
 
   int lowest = Pieces_BB::PieceNone;
 
+  {
+    uint64_t attacks = attacks_square(position, MailboxToStandard[sq], color);
+    uint64_t temp;
+    int value;
+
+    if (!attacks) {
+      return Pieces_BB::PieceNone;
+    }
+  }
+
   for (int dirs : AttackRays) {
     idx++;
     int temp_pos = sq + dirs;
