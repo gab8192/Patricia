@@ -214,7 +214,7 @@ void set_board(Position &position, ThreadInfo &thread_info,
   position.halfmoves = halfmoves;
 }
 
-bool attacks_square(const Position &position, int sq,
+uint64_t attacks_square(const Position &position, int sq,
                     int color) { // Do we attack the square at position "sq"?
 
   uint64_t bishops = position.pieces_bb[Pieces_BB::Bishop] | position.pieces_bb[Pieces_BB::Queen];
@@ -228,6 +228,21 @@ bool attacks_square(const Position &position, int sq,
                        (KingAttacks[sq]             & position.pieces_bb[Pieces_BB::King]);
 
   return attackers & position.colors_bb[color];
+}
+
+uint64_t attacks_square(const Position &position, int sq,
+                    int color, uint64_t occ) { // Do we attack the square at position "sq"?
+
+  uint64_t bishops = position.pieces_bb[Pieces_BB::Bishop] | position.pieces_bb[Pieces_BB::Queen];
+  uint64_t rooks = position.pieces_bb[Pieces_BB::Rook] | position.pieces_bb[Pieces_BB::Queen];
+
+  uint64_t attackers = (PawnAttacks[color^1][sq]    & position.pieces_bb[Pieces_BB::Pawn]) |
+                       (KnightAttacks[sq]           & position.pieces_bb[Pieces_BB::Knight]) |
+                       (get_bishop_attacks(sq, occ) & bishops) |
+                       (get_rook_attacks(sq, occ)   & rooks) |
+                       (KingAttacks[sq]             & position.pieces_bb[Pieces_BB::King]);
+
+  return attackers & position.colors_bb[color] & occ;
 }
 
 bool is_queen_promo(Move move) { return extract_promo(move) == 3; }

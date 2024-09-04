@@ -149,7 +149,7 @@ int cheapest_attacker(const Position &position, int sq, int color,
 
   int opp_color = color ^ 1, idx = -1;
 
-  int lowest = Pieces::Blank + 20;
+  int lowest = Pieces_BB::PieceNone;
 
   for (int dirs : AttackRays) {
     idx++;
@@ -220,12 +220,12 @@ bool SEE(Position &position, Move move, int threshold) {
   Position temp_pos = position;
   temp_pos.board[from] = Pieces::Blank;
 
-  int None = 20, attack_sq = 0;
+  int attack_sq = 0;
 
   while (gain - risk < threshold) {
     int type = cheapest_attacker(temp_pos, to, color ^ 1, attack_sq);
 
-    if (type == None) {
+    if (type == Pieces_BB::PieceNone) {
       return true;
     }
 
@@ -239,7 +239,7 @@ bool SEE(Position &position, Move move, int threshold) {
 
     type = cheapest_attacker(temp_pos, to, color, attack_sq);
 
-    if (type == None) {
+    if (type == Pieces_BB::PieceNone) {
       return false;
     }
 

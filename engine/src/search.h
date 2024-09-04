@@ -975,12 +975,12 @@ void iterative_deepen(
 
           Move move =
               bound_string == "upperbound" ? best_move : thread_info.best_move;
-
+              /*
           printf("info multipv %i depth %i seldepth %i score cp %i %s nodes "
                  "%" PRIu64 " nps %" PRIi64 " time %" PRIi64 " pv %s\n",
                  i, depth, thread_info.seldepth,
                  score * 100 / NormalizationFactor, bound_string.c_str(), nodes,
-                 nps, search_time, internal_to_uci(position, move).c_str());
+                 nps, search_time, internal_to_uci(position, move).c_str());*/
         }
 
         if (score <= alpha) {
@@ -1031,11 +1031,11 @@ void iterative_deepen(
         }
 
         if (!thread_info.doing_datagen) {
-          printf("info multipv %i depth %i seldepth %i score %s nodes %" PRIu64
+         /* printf("info multipv %i depth %i seldepth %i score %s nodes %" PRIu64
                  " nps %" PRIi64 " time %" PRIi64 " pv ",
                  i, depth, thread_info.seldepth, eval_string.c_str(), nodes,
                  nps, search_time);
-          print_pv(position, thread_info);
+          print_pv(position, thread_info);*/
         }
 
         else {
@@ -1079,7 +1079,7 @@ void iterative_deepen(
 finish:
   if (thread_info.thread_id == 0 && !thread_info.doing_datagen &&
       !thread_info.is_human) {
-    printf("bestmove %s\n", internal_to_uci(position, best_move).c_str());
+    //printf("bestmove %s\n", internal_to_uci(position, best_move).c_str());
   }
 }
 

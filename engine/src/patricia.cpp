@@ -100,12 +100,18 @@ void bench(Position &position, ThreadInfo &thread_info) {
 
   auto start = std::chrono::steady_clock::now();
 
+  int j = 0;
   for (std::string fen : fens) {
     new_game(thread_info, TT);
     set_board(position, thread_info, fen);
     thread_info.start_time = std::chrono::steady_clock::now();
     iterative_deepen(position, thread_info, TT);
     total_nodes += thread_info.nodes;
+
+    printf("Bench: %" PRIu64 " nodes %" PRIi32 " idx\n", total_nodes,
+         j);
+
+         j++;
   }
 
   printf("Bench: %" PRIu64 " nodes %" PRIi64 " nps\n", total_nodes,
