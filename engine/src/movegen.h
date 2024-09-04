@@ -249,6 +249,7 @@ bool SEE(Position &position, Move move, int threshold) {
       return false;
     }
     temp_pos.board[attack_sq] = Pieces::Blank;
+    occ &= ~(1ull << standard(attack_sq));
 
     type = cheapest_attacker(temp_pos, to, color, attack_sq, occ);
 
@@ -260,6 +261,7 @@ bool SEE(Position &position, Move move, int threshold) {
     risk = SeeValues[type];
 
     temp_pos.board[attack_sq] = Pieces::Blank;
+    occ &= ~(1ull << standard(attack_sq));
   }
 
   return true;
