@@ -144,7 +144,7 @@ int movegen(const Position &position, std::span<Move> move_list,
 }
 
 int cheapest_attacker(const Position &position, int sq, int color,
-                      int &attack_sq) {
+                      int &attack_sq, uint64_t &occ) {
   // Finds the cheapest attacker for a given square on a given board.
 
   int opp_color = color ^ 1, idx = -1;
@@ -152,9 +152,9 @@ int cheapest_attacker(const Position &position, int sq, int color,
   int lowest = Pieces_BB::PieceNone;
 
   {
-    uint64_t attacks = attacks_square(position, MailboxToStandard[sq], color);
-    uint64_t temp;
-    int value;
+    uint64_t attacks = attacks_square(position, MailboxToStandard[sq], color, occ);
+    uint64_t temp = 0;
+    int value = Pieces_BB::PieceNone;
 
     if (!attacks) {
       return Pieces_BB::PieceNone;
@@ -227,13 +227,16 @@ bool SEE(Position &position, Move move, int threshold) {
     return false;
   }
 
+  uint64_t occ = position.colors_bb[0] | position.colors_bb[1];
+  occ -= 1ull << standard(from);
+
   Position temp_pos = position;
   temp_pos.board[from] = Pieces::Blank;
 
   int attack_sq = 0;
 
   while (gain - risk < threshold) {
-    int type = cheapest_attacker(temp_pos, to, color ^ 1, attack_sq);
+    int type = cheapest_attacker(temp_pos, to, color ^ 1, attack_sq, occ);
 
     if (type == Pieces_BB::PieceNone) {
       return true;
@@ -247,7 +250,7 @@ bool SEE(Position &position, Move move, int threshold) {
     }
     temp_pos.board[attack_sq] = Pieces::Blank;
 
-    type = cheapest_attacker(temp_pos, to, color, attack_sq);
+    type = cheapest_attacker(temp_pos, to, color, attack_sq, occ);
 
     if (type == Pieces_BB::PieceNone) {
       return false;
