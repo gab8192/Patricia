@@ -487,10 +487,15 @@ void make_move(Position &position, Move move) { // Perform a move on the board.
 
 bool is_legal(Position &position, Move move) { // Perform a move on the board.
 
+  uint64_t occ = position.colors_bb[Colors::White] | position.colors_bb[Colors::Black];
   int from = extract_from(move), to = extract_to(move), color = position.color,
       opp_color = color ^ 1;
 
   int from_piece = position.board[from], to_piece = from_piece;
+
+  if (get_piece_type(from_piece) == PieceTypes::King) {
+    return ! attacks_square(position, to, opp_color, occ ^ (1ull << from));
+  }
 
   int cap_piece = position.board[to];
   int cap_square = cap_piece ? to : SquareNone;
