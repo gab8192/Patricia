@@ -253,6 +253,24 @@ attacks_square(const Position &position, int sq, int color,
   return attackers & position.colors_bb[color] & occ;
 }
 
+uint64_t
+br_attacks_square(const Position &position, int sq,
+               int color) { // Do we attack the square at position "sq"?
+
+  uint64_t bishops = position.pieces_bb[PieceTypes::Bishop] |
+                     position.pieces_bb[PieceTypes::Queen];
+  uint64_t rooks = position.pieces_bb[PieceTypes::Rook] |
+                   position.pieces_bb[PieceTypes::Queen];
+  uint64_t occ =
+      position.colors_bb[Colors::White] | position.colors_bb[Colors::Black];
+
+  uint64_t attackers =
+      (get_bishop_attacks(sq, occ) & bishops) |
+      (get_rook_attacks(sq, occ) & rooks);
+
+  return attackers & position.colors_bb[color];
+}
+
 bool is_queen_promo(Move move) { return extract_promo(move) == 3; }
 
 bool is_cap(const Position &position, Move &move) {
@@ -513,7 +531,7 @@ bool is_legal(Position &position, Move move) { // Perform a move on the board.
                          ? to
                          : get_king_pos(position, color);
 
-  bool is_king_attacked = attacks_square(position, new_king_pos, opp_color);
+  bool is_king_attacked = br_attacks_square(position, new_king_pos, opp_color);
 
   position.colors_bb[color] -= (1ull << to) - (1ull << from);
   position.pieces_bb[get_piece_type(from_piece)] += (1ull << from);
