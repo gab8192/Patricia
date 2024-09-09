@@ -48,12 +48,11 @@ INCBIN(nnue, "src/abby.nnue");
 const NNUE_Params &g_nnue = *reinterpret_cast<const NNUE_Params *>(g_nnueData);
 
 template <size_t HiddenSize> struct alignas(64) Accumulator {
-  std::array<int16_t, HiddenSize> white;
-  std::array<int16_t, HiddenSize> black;
+  std::array<std::array<int16_t, HiddenSize>, 2> colors;
 
   inline void init(std::span<const int16_t, HiddenSize> bias) {
-    std::memcpy(white.data(), bias.data(), bias.size_bytes());
-    std::memcpy(black.data(), bias.data(), bias.size_bytes());
+    std::memcpy(colors[1].data(), bias.data(), bias.size_bytes());
+    std::memcpy(colors[0].data(), bias.data(), bias.size_bytes());
   }
 };
 
@@ -83,19 +82,20 @@ inline void subtract_from_all(std::array<int16_t, size> &output,
   }
 }
 
-std::pair<size_t, size_t> feature_indices(int piece, int sq) {
+size_t feature_index(int view, int kingSq, int piece, int sq) {
   constexpr size_t color_stride = 64 * 6;
   constexpr size_t piece_stride = 64;
+
+  // flip piece square if king square is on file E <-> H
+  if (kingSq & 4)
+    sq ^= 7;
 
   const auto base = static_cast<int>(piece / 2 - 1);
   const size_t color = piece & 1;
 
-  const auto whiteIdx =
-      color * color_stride + base * piece_stride + static_cast<size_t>(sq);
-  const auto blackIdx = (color ^ 1) * color_stride + base * piece_stride +
-                        (static_cast<size_t>(sq ^ 56));
-
-  return {whiteIdx, blackIdx};
+  return (view != color) * color_stride +
+         base * piece_stride +
+         static_cast<size_t>(sq ^ (56 * view));
 }
 
 inline int32_t
@@ -152,15 +152,16 @@ class NNUE_State {
 public:
   Accumulator<LAYER1_SIZE> m_accumulator_stack[MaxSearchDepth];
   Accumulator<LAYER1_SIZE> *m_curr;
+  int kings_pos[2];
 
   void add_sub(int from_piece, int from, int to_piece, int to);
   void add_sub_sub(int from_piece, int from, int to_piece, int to, int captured, int captured_pos);
   void add_add_sub_sub(int piece1, int from1, int to1, int piece2, int from2, int to2);
   void pop();
   int evaluate(int color);
-  void reset_nnue(Position position);
+  void reset_nnue(const Position& position);
 
-  template <bool Activate> inline void update_feature(int piece, int square);
+  inline void add_feature(int piece, int square);
 
   NNUE_State() {}
 };
@@ -168,17 +169,14 @@ public:
 
 void NNUE_State::add_sub(int from_piece, int from, int to_piece, int to) {
 
-  const auto [white_from, black_from] = feature_indices(from_piece, from);
-  const auto [white_to, black_to] = feature_indices(to_piece, to);
-
-  for (size_t i = 0; i < LAYER1_SIZE; ++i) {
-    m_curr[1].white[i] = m_curr->white[i] +
-                         g_nnue.feature_v[white_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_from * LAYER1_SIZE + i];
-
-    m_curr[1].black[i] = m_curr->black[i] +
-                         g_nnue.feature_v[black_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from * LAYER1_SIZE + i];
+  for (int view = Colors::White; view <= Colors::Black; ++view) {
+    const auto from_ft = feature_index(view, kings_pos[view], from_piece, from);
+    const auto to_ft = feature_index(view, kings_pos[view], to_piece, to);
+    for (size_t i = 0; i < LAYER1_SIZE; ++i) {
+      m_curr[1].colors[view][i] = m_curr->colors[view][i] +
+                         g_nnue.feature_v[to_ft * LAYER1_SIZE + i] -
+                         g_nnue.feature_v[from_ft * LAYER1_SIZE + i];
+    }
   }
 
   m_curr++;
@@ -186,43 +184,34 @@ void NNUE_State::add_sub(int from_piece, int from, int to_piece, int to) {
 
 void NNUE_State::add_sub_sub(int from_piece, int from, int to_piece, int to, int captured,
                              int captured_sq) {
-  const auto [white_from, black_from] = feature_indices(from_piece, from);
-  const auto [white_to, black_to] = feature_indices(to_piece, to);
-  const auto [white_capt, black_capt] = feature_indices(captured, captured_sq);
-
-  for (size_t i = 0; i < LAYER1_SIZE; ++i) {
-    m_curr[1].white[i] = m_curr->white[i] +
-                         g_nnue.feature_v[white_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_from * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_capt * LAYER1_SIZE + i];
-
-    m_curr[1].black[i] = m_curr->black[i] +
-                         g_nnue.feature_v[black_to * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_capt * LAYER1_SIZE + i];
+  for (int view = Colors::White; view <= Colors::Black; ++view) {
+    const auto from_ft = feature_index(view, kings_pos[view], from_piece, from);
+    const auto to_ft = feature_index(view, kings_pos[view], to_piece, to);
+    const auto cap_ft = feature_index(view, kings_pos[view], captured, captured_sq);
+    for (size_t i = 0; i < LAYER1_SIZE; ++i) {
+      m_curr[1].colors[view][i] = m_curr->colors[view][i] +
+                         g_nnue.feature_v[to_ft * LAYER1_SIZE + i] -
+                         g_nnue.feature_v[from_ft * LAYER1_SIZE + i] -
+                         g_nnue.feature_v[cap_ft * LAYER1_SIZE + i];
+    }
   }
 
   m_curr++;
 }
 
 void NNUE_State::add_add_sub_sub(int piece1, int from1, int to1, int piece2, int from2, int to2){
-  const auto [white_from1, black_from1] = feature_indices(piece1, from1);
-  const auto [white_to1, black_to1] = feature_indices(piece1, to1);
-  const auto [white_from2, black_from2] = feature_indices(piece2, from2);
-  const auto [white_to2, black_to2] = feature_indices(piece2, to2);
-
-  for (size_t i = 0; i < LAYER1_SIZE; ++i){
-    m_curr[1].white[i] = m_curr->white[i] +
-                         g_nnue.feature_v[white_to1 * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[white_from1 * LAYER1_SIZE + i] +
-                         g_nnue.feature_v[white_to2 * LAYER1_SIZE + i] - 
-                         g_nnue.feature_v[white_from2 * LAYER1_SIZE + i];
-
-    m_curr[1].black[i] = m_curr->black[i] +
-                         g_nnue.feature_v[black_to1 * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from1 * LAYER1_SIZE + i] +
-                         g_nnue.feature_v[black_to2 * LAYER1_SIZE + i] -
-                         g_nnue.feature_v[black_from2 * LAYER1_SIZE + i];
+ for (int view = Colors::White; view <= Colors::Black; ++view) {
+    const auto from1_ft = feature_index(view, kings_pos[view], piece1, from1);
+    const auto to1_ft = feature_index(view, kings_pos[view], piece1, to1);
+    const auto from2_ft = feature_index(view, kings_pos[view], piece2, from2);
+    const auto to2_ft = feature_index(view, kings_pos[view], piece2, to2);
+    for (size_t i = 0; i < LAYER1_SIZE; ++i) {
+      m_curr[1].colors[view][i] = m_curr->colors[view][i] +
+                         g_nnue.feature_v[to1_ft * LAYER1_SIZE + i] -
+                         g_nnue.feature_v[from1_ft * LAYER1_SIZE + i] +
+                         g_nnue.feature_v[to2_ft * LAYER1_SIZE + i] -
+                         g_nnue.feature_v[from2_ft * LAYER1_SIZE + i];
+    }
   }
 
   m_curr++;
@@ -231,38 +220,29 @@ void NNUE_State::add_add_sub_sub(int piece1, int from1, int to1, int piece2, int
 void NNUE_State::pop() { m_curr--; }
 
 int NNUE_State::evaluate(int color) {
-  const auto output =
-      color == Colors::White
-          ? screlu_flatten(m_curr->white, m_curr->black, g_nnue.output_v)
-          : screlu_flatten(m_curr->black, m_curr->white, g_nnue.output_v);
+  const auto output = screlu_flatten(m_curr->colors[color], m_curr->colors[color^1], g_nnue.output_v);
   return (output + g_nnue.output_bias) * SCALE / QAB;
 }
 
-template <bool Activate>
-inline void NNUE_State::update_feature(int piece, int square) {
-  const auto [white_idx, black_idx] = feature_indices(piece, square);
-
-  if constexpr (Activate) {
-    add_to_all(m_curr->white, m_curr->white, g_nnue.feature_v,
-               white_idx * LAYER1_SIZE);
-    add_to_all(m_curr->black, m_curr->black, g_nnue.feature_v,
-               black_idx * LAYER1_SIZE);
-  } else {
-    subtract_from_all(m_curr->white, m_curr->white, g_nnue.feature_v,
-                      white_idx * LAYER1_SIZE);
-    subtract_from_all(m_curr->black, m_curr->black, g_nnue.feature_v,
-                      black_idx * LAYER1_SIZE);
+inline void NNUE_State::add_feature(int piece, int square) {
+  for (int view = Colors::White; view <= Colors::Black; ++view) {
+    add_to_all(m_curr->colors[view], m_curr->colors[view], g_nnue.feature_v,
+         feature_index(view, kings_pos[view], piece, square) * LAYER1_SIZE);
   }
 }
 
-void NNUE_State::reset_nnue(Position position) {
+int get_king_pos(const Position &position, int color);
+
+void NNUE_State::reset_nnue(const Position& position) {
   m_curr = &m_accumulator_stack[0];
   m_curr->init(g_nnue.feature_bias);
+  
+  for (int view = Colors::White; view <= Colors::Black; ++view)
+    kings_pos[view] = get_king_pos(position, view);
 
   for (int square = a1; square < SqNone; square++) {
     if (position.board[square] != Pieces::Blank) {
-      update_feature<true>(position.board[square],
-                           square);
+      add_feature(position.board[square], square);
     }
   }
 }
