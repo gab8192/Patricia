@@ -340,10 +340,14 @@ int qsearch(int alpha, int beta, Position &position, ThreadInfo &thread_info,
         break;
       }
     }
+
+    if (in_check && best_score > -MateScore && !is_cap(position, move)) {
+      break;
+    }
   }
 
-  if (best_score == ScoreNone) { // handle no legal moves (stalemate/checkmate)
-    return in_check ? (Mate + ply) : 0;
+  if (in_check && best_score == ScoreNone) { // handle checkmate
+    return Mate + ply;
   }
 
   // insert entries and return

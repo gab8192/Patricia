@@ -279,8 +279,7 @@ bool is_queen_promo(Move move) { return extract_promo(move) == 3; }
 bool is_cap(const Position &position, Move &move) {
   int to = extract_to(move);
   return (position.board[to] ||
-          (to == position.ep_square && position.board[extract_from(move)] ==
-                                           Pieces::WPawn + position.color) ||
+          extract_type(move) == MoveTypes::EnPassant ||
           is_queen_promo((move)));
 }
 
