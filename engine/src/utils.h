@@ -143,9 +143,12 @@ uint64_t hash_to_idx(uint64_t hash) {
   return (uint128_t(hash) * uint128_t(TT_size)) >> 64;
 }
 
+int entry_age_diff(TTEntry &entry, int searches) {
+  return (MaxAge + searches - entry.get_age()) % MaxAge;
+}
+
 int entry_quality(TTEntry &entry, int searches) {
-  int age_diff = (MaxAge + searches - entry.get_age()) % MaxAge;
-  return entry.depth - age_diff * 8;
+  return entry.depth - entry_age_diff(entry, searches) * 8;
 }
 
 TTEntry &probe_entry(uint64_t hash, bool &hit, uint8_t searches,
@@ -155,12 +158,10 @@ TTEntry &probe_entry(uint64_t hash, bool &hit, uint8_t searches,
   auto &entries = TT[hash_to_idx(hash)].entries;
 
   for (int i = 0; i < BucketEntries; i++) {
-    bool empty =
-        entries[i].score == 0 && entries[i].get_type() == EntryTypes::None;
+    if (entries[i].position_key == hash_key) {
+      // non empty
+      hit = entries[i].score != 0 || entries[i].get_type() != EntryTypes::None;
 
-    if (empty || entries[i].position_key == hash_key) {
-      hit = !empty;
-      entries[i].age_bound = (searches << 2) | entries[i].get_type();
       return entries[i];
     }
   }
@@ -191,14 +192,13 @@ void insert_entry(
     entry.best_move = best_move;
   }
 
-  if (entry.position_key == hash_key && (bound_type != EntryTypes::Exact) &&
-      entry.depth > depth + 4) {
-    return;
-  }
+  if (entry.position_key != hash_key || (bound_type == EntryTypes::Exact) ||
+      depth + 4 > entry.depth || entry_age_diff(entry, searches)) {
 
-  entry.position_key = hash_key, entry.depth = static_cast<uint8_t>(depth),
-  entry.static_eval = static_eval, entry.score = score,
-  entry.age_bound = (searches << 2) | bound_type;
+      entry.position_key = hash_key, entry.depth = static_cast<uint8_t>(depth),
+      entry.static_eval = static_eval, entry.score = score,
+      entry.age_bound = (searches << 2) | bound_type;
+  }
 }
 
 void calculate(Position &position) { // Calculates the zobrist key of
