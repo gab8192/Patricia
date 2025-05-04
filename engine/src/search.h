@@ -442,17 +442,8 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
   }
 
   if (ply && is_draw(position, thread_info)) { // Draw detection
-    int draw_score = 1 - (thread_info.nodes & 3);
-
-    int material = material_eval(position);
-
-    if (material < 0) {
-      draw_score += 50;
-    } else if (material > 0) {
-      draw_score -= 50;
-    }
-
-    return draw_score;
+    uint8_t root_stm = thread_info.position.color;
+    return root_stm == position.color ? -50 : 50;
     // We want to discourage draws at the root.
     // ply 0 - make a move that makes the position a draw
     // ply 1 - bonus to side, which is penalty to us
