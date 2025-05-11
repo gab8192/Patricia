@@ -104,63 +104,7 @@ int16_t total_mat_color(const Position &position, int color) {
 
 int eval(Position &position, ThreadInfo &thread_info) {
   int color = position.color;
-  int root_color = thread_info.search_ply % 2 ? color ^ 1 : color;
   int eval = thread_info.nnue_state.evaluate(color, thread_info.phase);
-
-  // Patricia is much less dependent on explicit eval twiddling than before, but
-  // there are still a few things I do.
-
-  int bonus1 = 0, bonus2 = 0;
-
-  /*
-    // Give a small bonus if the position is much better than what material
-    would
-    // suggest
-    if (eval > 0 && eval > m_eval + m_threshold) {
-      bonus1 += 25 + (eval - m_eval - m_threshold) / 10;
-    } else if (eval < 0 && eval < m_eval - m_threshold) {
-      bonus1 -= 25 + (m_eval - eval - m_threshold) / 10;
-    }
-  */
-
-  bool our_side = (thread_info.search_ply % 2 == 0);
-
-  int start_index = std::max(thread_info.game_ply - thread_info.search_ply, 0);
-
-  int s_m = thread_info.game_hist[start_index].m_diff;
-  int s = 0;
-
-  // Give a small bonus if we have sacrificed material at some point in the
-  // search tree If we are completely winning, give a bigger bonus to
-  // incentivize finding the most stylish move when everything wins
-
-  for (int idx = start_index + 2; idx < thread_info.game_ply - 4; idx += 2) {
-
-    if (thread_info.game_hist[idx].m_diff < s_m &&
-        thread_info.game_hist[idx + 1].m_diff > s_m &&
-        thread_info.game_hist[idx + 2].m_diff < s_m &&
-        thread_info.game_hist[idx + 3].m_diff > s_m &&
-        thread_info.game_hist[idx + 4].m_diff < s_m) {
-
-      s = s_m + thread_info.game_hist[idx + 4].m_diff;
-      break;
-    }
-
-    if (thread_info.game_hist[idx].m_diff < 0 &&
-        thread_info.game_hist[idx].m_diff == material_eval(position)) {
-
-      s = 1;
-      break;
-    }
-  }
-  if (s && total_mat(position) > 3500) {
-
-    if (thread_info.search_ply % 2) {
-      bonus2 = -40 * (eval < -300 ? 2 : eval < 0 ? 1 : 0);
-    } else {
-      bonus2 = 40 * (eval > 300 ? 2 : eval > 0 ? 1 : 0);
-    }
-  }
 
   // If we're winning, scale eval by material; we don't want to trade off to an
   // easily won endgame, but instead should continue the attack.
@@ -169,7 +113,7 @@ int eval(Position &position, ThreadInfo &thread_info) {
 
   eval = eval * multiplier;
 
-  return std::clamp(eval + bonus1 + bonus2, ScoreLost + 1, ScoreWin - 1);
+  return std::clamp(eval, ScoreLost + 1, ScoreWin - 1);
 }
 
 int correct_eval(const Position &position, ThreadInfo &thread_info, int eval) {
@@ -442,25 +386,7 @@ int search(int alpha, int beta, int depth, bool cutnode, Position &position,
   }
 
   if (ply && is_draw(position, thread_info)) { // Draw detection
-    int draw_score = 1 - (thread_info.nodes & 3);
-
-    int material = material_eval(position);
-
-    if (material < 0) {
-      draw_score += 50;
-    } else if (material > 0) {
-      draw_score -= 50;
-    }
-
-    return draw_score;
-    // We want to discourage draws at the root.
-    // ply 0 - make a move that makes the position a draw
-    // ply 1 - bonus to side, which is penalty to us
-
-    // alternatively
-    // ply 0 - we make forced move
-    // ply 1 - opponent makes draw move
-    // ply 2 - penalty to us*/
+    return 0;
   }
 
   if (depth <= 0) {
