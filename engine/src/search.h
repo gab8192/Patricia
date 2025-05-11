@@ -106,19 +106,10 @@ int eval(Position &position, ThreadInfo &thread_info) {
   int color = position.color;
   int eval = thread_info.nnue_state.evaluate(color, thread_info.phase);
 
-  // If we're winning, scale eval by material; we don't want to trade off to an
-  // easily won endgame, but instead should continue the attack.
-
-  float multiplier = ((float)750 + total_mat(position) / 25) / 1024;
-
-  eval = eval * multiplier;
-
   return std::clamp(eval, ScoreLost + 1, ScoreWin - 1);
 }
 
 int correct_eval(const Position &position, ThreadInfo &thread_info, int eval) {
-
-  eval = eval * (200 - position.halfmoves) / 200;
 
   int corr =
       thread_info
